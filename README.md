@@ -1,5 +1,10 @@
 # Minsky
 
+[![CI](https://github.com/alexrodrigues/minsky_ai/actions/workflows/ci.yml/badge.svg)](https://github.com/alexrodrigues/minsky_ai/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2a78d6.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-2a78d6.svg)](pyproject.toml)
+[![Local-first](https://img.shields.io/badge/local--first-100%25-2a78d6.svg)](#architecture)
+
 A local RAG layer over your `~/Developer` projects (code, docs, personal notes, git history), exposed as an MCP server so Claude can search it directly.
 
 - Embeddings: local, via [Ollama](https://ollama.com) (`nomic-embed-text`) - nothing leaves your machine.
@@ -82,6 +87,11 @@ flowchart TD
 
 Real numbers from `minsky eval` against this repo's own 24-case `evalset.toml` (2026-11-24) - not illustrative, the actual before/after:
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/eval-chart-dark.svg">
+  <img src="docs/eval-chart-light.svg" alt="Dumbbell chart comparing vector-only retrieval against --multi-query across hit@1, hit@3, hit@5, hit@10, MRR, and nDCG@3 - multi-query trails on every metric except the two that tie.">
+</picture>
+
 | Mode | hit@1 | hit@3 | hit@5 | hit@10 | MRR | ndcg@3 |
 |---|---|---|---|---|---|---|
 | vector only (default) | 71% | 88% | 92% | 96% | 0.784 | 0.784 |
@@ -92,6 +102,22 @@ Real numbers from `minsky eval` against this repo's own 24-case `evalset.toml` (
 ## Setup
 
 Fastest path is pasting `SETUP_PROMPT.md`'s content into your own Claude Code/Codex session to have it bootstrap everything automatically, OR doing it manually (install Ollama, pull `nomic-embed-text`, `pip install -e .`). We recommend using `gpt-oss:20b` or `qwen2.5-coder:14b` as the worker model; either requires at least 13 GB of free RAM, while `qwen2.5-coder:7b` is a lighter fallback for machines with less RAM. Configuration lives in `minsky.toml` - edit `[index] roots` / `extra_projects` to change what gets indexed, and `[git]` to toggle commit history indexing. The `roots` setting should point at your own code (e.g. `~/Projects` or `~/Developer`, not assuming either specifically).
+
+```mermaid
+flowchart TD
+    a(["Paste SETUP_PROMPT.md<br/>into your coding agent"]) --> b["Read all 4<br/>constraints/*.md files"]
+    b --> c{Ollama installed<br/>and running?}
+    c -->|no| c1["Tell user to install it,<br/>stop"]
+    c -->|yes| d{nomic-embed-text + a<br/>worker model pulled?}
+    d -->|missing| d1["Confirm with user,<br/>show size, then pull"]
+    d -->|yes| e["Ask which folders<br/>to index"]
+    d1 --> e
+    e --> f["Edit minsky.toml's<br/>roots / extra_projects"]
+    f --> g["Create venv,<br/>pip install -e ."]
+    g --> h["Run minsky index"]
+    h --> i["Suggest a first<br/>minsky search query"]
+    i --> j(["Ready to search"])
+```
 
 ## Usage
 
