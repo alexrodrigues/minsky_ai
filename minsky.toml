@@ -1,0 +1,50 @@
+# Minsky configuration.
+# Paths support ~ expansion.
+
+[general]
+db_path = "~/.minsky/db"
+ollama_url = "http://localhost:11434"
+embed_model = "nomic-embed-text"
+# Local model used for delegated boilerplate/bulk work.
+# Recommended models:
+#   - gpt-oss:20b (requires at least 13GB free RAM)
+#   - qwen2.5-coder:14b (requires at least 13GB free RAM)
+# Lighter fallback: qwen2.5-coder:7b for machines with less RAM.
+worker_model = "gpt-oss:20b"
+
+[index]
+# Directories whose immediate subdirectories are each treated as a project.
+# Point this at your own code; do not assume any specific folder name.
+roots = ["~/Projects"]
+# Individual project paths to index in addition to (or instead of) roots.
+extra_projects = []
+
+# File extensions treated as indexable source/docs.
+extensions = [
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".rb",
+    ".c", ".h", ".cpp", ".hpp", ".cs", ".swift", ".kt", ".sh", ".sql",
+    ".md", ".mdx", ".rst", ".txt", ".toml", ".yaml", ".yml", ".json",
+]
+
+# Directory names skipped entirely during the walk.
+ignore_dirs = [
+    ".git", "node_modules", ".venv", "venv", "__pycache__", "dist",
+    "build", ".next", "target", ".mypy_cache", ".pytest_cache", ".idea",
+    ".vscode", "coverage", ".tox", "vendor",
+    "Pods", "DerivedData", "Carthage", ".build",
+    ".gradle", ".cxx", ".dart_tool", ".pub-cache", "Flutter",
+    ".symlinks", ".plugin_symlinks", "ephemeral",
+]
+
+# Filenames (anywhere in a project) treated as personal notes, kind="note".
+note_files = ["NOTES.md", "TODO.md", "todo.md", "notes.md"]
+
+# Directory names (anywhere in a project) whose contents are all treated as notes.
+note_dirs = ["notes", ".minsky-notes"]
+
+# Max file size in bytes; larger files are skipped.
+max_file_bytes = 500_000
+
+[git]
+enabled = true
+max_commits_per_project = 500

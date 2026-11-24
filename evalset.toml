@@ -1,0 +1,153 @@
+# minsky eval set
+#
+# Each [[case]] is a query plus the path(s) that a correct answer must surface.
+# `expect` entries are case-insensitive substring matches against the result path, so "minsky/store.py" and "store.py" both work.
+# Run with:   .venv/bin/minsky eval
+# Baseline:   .venv/bin/minsky eval --save baseline.json
+# Compare:    .venv/bin/minsky eval --compare baseline.json
+#
+# Keep adding cases drawn from questions you actually asked the index. The numbers only mean something if the queries are real ones.
+
+[[case]]
+name = "embeddings-call"
+query = "where are text embeddings generated"
+expect = ["minsky/ollama_client.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "chunk-source-files"
+query = "how are source files split into chunks for indexing"
+expect = ["minsky/chunking.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "ast-chunking"
+query = "AST-aware chunking with tree-sitter definition boundaries"
+expect = ["minsky/chunking.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "lancedb-schema"
+query = "LanceDB table schema and vector column definition"
+expect = ["minsky/store.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "vector-search-filter"
+query = "vector similarity search filtered by project and kind"
+expect = ["minsky/store.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "mcp-server"
+query = "how does the MCP server expose the search tool"
+expect = ["minsky/server.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "git-commit-indexing"
+query = "indexing git commit messages into the vector store"
+expect = ["minsky/indexer.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "skip-unchanged"
+query = "what prevents re-embedding files that have not changed"
+expect = ["minsky/index_state.py", "minsky/indexer.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "gitignore-respect"
+query = "respecting gitignore patterns while walking a project"
+expect = ["minsky/indexer.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "worker-model-config"
+query = "which local model is used for delegated work"
+expect = ["minsky/config.py", "minsky.toml"]
+project = "minsky_ai"
+
+[[case]]
+name = "delegate-transcripts"
+query = "where are delegate conversation transcripts written to disk"
+expect = ["minsky/delegate.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "delegate-streaming"
+query = "streaming the worker model response live to stderr"
+expect = ["minsky/delegate.py", "minsky/ollama_client.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "compact-db"
+query = "compacting the database to reclaim disk space"
+expect = ["minsky/store.py", "minsky/cli.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "add-cli-subcommand"
+query = "how to register a new CLI subcommand with argparse"
+expect = ["minsky/cli.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "ollama-unreachable"
+query = "error when Ollama cannot be reached"
+expect = ["minsky/cli.py", "minsky/ollama_client.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "project-discovery"
+query = "how are projects discovered under the configured roots"
+expect = ["minsky/config.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "note-classification"
+query = "which files are treated as personal notes instead of docs"
+expect = ["minsky/indexer.py", "minsky.toml"]
+project = "minsky_ai"
+
+[[case]]
+name = "embed-batching"
+query = "batching embedding requests to bound HTTP payload size"
+expect = ["minsky/indexer.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "rerank-relevance"
+query = "reranking candidate results by relevance using the worker model"
+expect = ["minsky/rerank.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "alternative-query-phrasing"
+query = "generating alternative phrasing of search queries and fusing results"
+expect = ["minsky/multiquery.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "ndcg-evaluation"
+query = "computing nDCG for graded relevance in retrieval evaluation"
+expect = ["minsky/eval.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "llm-judge-check"
+query = "LLM judge to verify if top search result answers query"
+expect = ["minsky/eval.py"]
+project = "minsky_ai"
+
+[[case]]
+name = "setup-agent-preparation"
+query = "what should an AI agent do before configuring this project for a new user"
+expect = ["SETUP_PROMPT.md"]
+project = "minsky_ai"
+
+[[case]]
+name = "architecture-constraints"
+query = "what are the non-negotiable architecture constraints for a setup agent"
+expect = ["constraints/architecture.md"]
+project = "minsky_ai"
