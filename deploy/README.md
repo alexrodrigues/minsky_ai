@@ -10,7 +10,10 @@ LanceDB index is pre-built from this repo's own source (see
 `build_demo_index.py`) and lives on a persistent Modal Volume - no live
 re-indexing in prod. The chat answer comes from a hosted Claude call. A daily
 request cap and a per-IP rate limit guard the metered API from being run up
-by strangers.
+by strangers. A shared access token (app-level, not Modal's platform proxy
+auth - that gates the page load itself, which doesn't fit "visit a URL and
+chat") is embedded in the page's JS and required on `/chat`; it blocks
+scripts/bots that hit the API directly without ever loading the page.
 
 ## One-time setup
 
@@ -28,6 +31,9 @@ modal volume put minsky-demo-db deploy/build/db /
 # Create the secret (placeholder is fine until the real key is ready - the
 # /chat endpoint degrades gracefully to "retrieval only" without it)
 modal secret create anthropic-api-key ANTHROPIC_API_KEY=placeholder
+
+# Shared access token required on /chat (generate your own; not a third-party key)
+modal secret create minsky-chat-token CHAT_ACCESS_TOKEN=$(python3 -c "import secrets; print(secrets.token_urlsafe(24))")
 ```
 
 ## Deploy

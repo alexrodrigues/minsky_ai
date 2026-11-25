@@ -21,6 +21,7 @@ import modal
 APP_NAME = "minsky-chat-demo"
 VOLUME_NAME = "minsky-demo-db"
 SECRET_NAME = "anthropic-api-key"
+CHAT_TOKEN_SECRET_NAME = "minsky-chat-token"
 DB_MOUNT_PATH = "/data/minsky-db"
 # `modal volume put ... deploy/build/db /` uploads the directory under its own
 # name, landing the LanceDB files at <mount>/db rather than at <mount> itself.
@@ -70,6 +71,7 @@ image = (
 app = modal.App(APP_NAME, image=image)
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
 anthropic_secret = modal.Secret.from_name(SECRET_NAME)
+chat_token_secret = modal.Secret.from_name(CHAT_TOKEN_SECRET_NAME)
 
 
 CHAT_HTML = """<!doctype html>
@@ -144,7 +146,7 @@ CHAT_HTML = """<!doctype html>
     try {
       const res = await fetch('/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Minsky-Token': '__CHAT_TOKEN__' },
         body: JSON.stringify({ message: q }),
       });
       const data = await res.json();
@@ -178,7 +180,7 @@ def _today() -> str:
 @app.cls(
     image=image,
     volumes={DB_MOUNT_PATH: volume},
-    secrets=[anthropic_secret],
+    secrets=[anthropic_secret, chat_token_secret],
     scaledown_window=300,
     min_containers=0,
 )
@@ -233,6 +235,8 @@ class MinskyChat:
 
     @modal.asgi_app()
     def web(self):
+        import os
+
         import anthropic
         from fastapi import FastAPI, HTTPException, Request
         from fastapi.responses import HTMLResponse
@@ -240,16 +244,20 @@ class MinskyChat:
 
         web_app = FastAPI()
         claude = anthropic.Anthropic()
+        chat_token = os.environ["CHAT_ACCESS_TOKEN"]
 
         class ChatRequest(BaseModel):
             message: str
 
         @web_app.get("/", response_class=HTMLResponse)
         def index() -> str:
-            return CHAT_HTML
+            return CHAT_HTML.replace("__CHAT_TOKEN__", chat_token)
 
         @web_app.post("/chat")
         def chat(req: ChatRequest, request: Request) -> dict:
+            if request.headers.get("x-minsky-token") != chat_token:
+                raise HTTPException(401, "missing or invalid access token")
+
             message = req.message.strip()
             if not message:
                 raise HTTPException(400, "empty message")
