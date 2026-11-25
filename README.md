@@ -201,15 +201,19 @@ kind = "code"          # optional: code | doc | note | git
 ```
 
 ```
-.venv/bin/minsky eval                           # hit@1/3/5/10 + MRR + nDCG@1/3/5/10
-.venv/bin/minsky eval --verbose                 # for misses, show what came back instead
-.venv/bin/minsky eval --case embeddings-call    # one case (repeatable)
-.venv/bin/minsky eval --save baseline.json      # record the current state
-.venv/bin/minsky eval --compare baseline.json   # diff against it, per case
-.venv/bin/minsky eval --fail-under 0.8          # non-zero exit for cron/hooks
-.venv/bin/minsky eval --multi-query             # score the multi-query retrieval path instead
-.venv/bin/minsky eval --judge                   # LLM-as-judge pass, see below
+.venv/bin/minsky eval
 ```
+
+| Flag | What it does |
+|---|---|
+| *(none)* | hit@1/3/5/10 + MRR + nDCG@1/3/5/10 |
+| `--verbose` | for misses, show what came back instead |
+| `--case embeddings-call` | run one case (repeatable) |
+| `--save baseline.json` | record the current state |
+| `--compare baseline.json` | diff against the saved state, per case |
+| `--fail-under 0.8` | non-zero exit, for cron/hooks |
+| `--multi-query` | score the multi-query retrieval path instead |
+| `--judge` | LLM-as-judge pass, see below |
 
 nDCG@k is graded rather than binary like hit@k: it rewards a relevant hit
 ranking earlier, and rewards more of a case's multiple acceptable paths
@@ -218,47 +222,58 @@ otherwise collapses away.
 
 `--judge` asks the worker model whether the #1 result's actual content would
 answer the query, independent of whether its path matched `expect` - a check
-on hit@k itself, not a replacement for it. It catches two blind spots
-hit@k's path-matching can't see on its own: a path match that lands on the
-wrong chunk of the right file, and a path miss where the content was fine but
-lived somewhere `expect` never named. Disagreements between path-matching and
-the judge print separately from the main report; a judge call that errors or
-returns something unparseable counts as neither a pass nor a fail.
+on hit@k itself, not a replacement for it. It catches two blind spots hit@k's
+path-matching can't see on its own:
+
+| Blind spot | What path-matching alone misses | How `--judge` catches it |
+|---|---|---|
+| Path match, wrong chunk | marks it a hit even if the retrieved chunk wouldn't actually answer the query | judges the #1 result's real content directly |
+| Path miss, right content | marks it a miss even though the answer was fine | judges content independent of whether the path matched `expect` |
+
+Disagreements between path-matching and the judge print separately from the
+main report; a judge call that errors or returns something unparseable counts
+as neither a pass nor a fail.
 
 The `--compare` output names each case that moved, and flags `REGRESSED` for any
 that dropped out of the window entirely - so a change that raises the average
 while breaking three specific lookups doesn't slip through.
 
-Before scoring, `eval` checks the two things that fail silently: a case pointing
-at a project that was never indexed (which can only ever miss), and an
-`index_state.json` older than 24 hours. Both print a `warning:` to stderr so a
-miss isn't mistaken for bad retrieval.
+Before scoring, `eval` checks the two things that fail silently:
+
+| Silent-failure mode | Why it's dangerous | Caught by |
+|---|---|---|
+| A case targets a project that was never indexed | can only ever miss - looks exactly like bad retrieval | preflight `warning:` to stderr |
+| `index_state.json` is older than 24 hours | a stale index looks identical to a fresh one | preflight `warning:` to stderr |
 
 Add cases from queries you actually typed. Twenty invented queries prove less
 than five real ones.
 
 ### Evaluation metrics explained
 
-The following metrics are used to evaluate retrieval performance. They are
-described in plain language:
+| Metric | Plain-language definition | Scored as | Cares about rank, not just presence? |
+|---|---|---|---|
+| **rank** | 1-based position of the first relevant result in the returned list; no rank at all if it never appears (a miss) | an integer, or "miss" | - |
+| **hit@k** | did a relevant result land anywhere in the top k | yes/no per case -> % across all cases | No - rank 1 and rank k tie, as long as both are "in the window" |
+| **MRR** (Mean Reciprocal Rank) | the average of `1/rank` across all cases (a miss counts as 0) | 0.0 - 1.0 | Yes - rank 1 scores 1.0, rank 2 scores 0.5, rank 4 scores 0.25 |
+| **nDCG@k** (normalized Discounted Cumulative Gain) | graded rather than binary version of hit@k | 0.0 - 1.0 | Yes, plus rewards more of a case's multiple acceptable paths landing in the same window - a detail hit@k's first-match-only rank collapses away |
 
-- **rank**: the 1-based position of the first relevant/expected result in the
-  returned list; a case that never appears in the results has no rank (a miss).
-- **hit@k**: whether a relevant result landed anywhere in the top k results
-  - a yes/no per case, averaged into a percentage across all cases.
-- **MRR (Mean Reciprocal Rank)**: the average of `1/rank` across all cases
-  (a miss counts as 0). It rewards a correct result ranking **higher**, not
-  just appearing somewhere in the window: rank 1 scores 1.0, rank 2 scores 0.5,
-  rank 4 scores 0.25, a miss scores 0 - unlike hit@k, which treats rank 1
-  and rank k as equally good as long as both are "in the window."
-- **nDCG (normalized Discounted Cumulative Gain)**: graded rather than binary -
-  rewards a relevant hit ranking earlier, and rewards more of a case's
-  multiple acceptable paths showing up in the same top-k window, a detail
-  hit@k's first-match-only rank otherwise collapses away.
+**Worked example** - 3 cases, k = 3:
+
+| Case | Rank of first relevant result | hit@3 | 1/rank (MRR term) |
+|---|---|---|---|
+| A | 1 | ✅ | 1.00 |
+| B | 2 | ✅ | 0.50 |
+| C | miss | ❌ | 0.00 |
 
 ```
-MRR = (1/1 + 1/2 + 0) / 3 = 0.5
+hit@3 = 2/3 = 67%
+MRR   = (1.00 + 0.50 + 0.00) / 3 = 0.50
 ```
+
+Same three cases, different story: hit@3 only sees "did it show up," so A and B
+look identical. MRR sees that A ranked higher than B and scores it accordingly -
+which is exactly the gap nDCG@k closes further by also rewarding how many of a
+case's *acceptable* paths land in-window, not just the first one.
 
 Refer to the evaluation table earlier in this README to verify the reported
 MRR and nDCG numbers using this definition.
