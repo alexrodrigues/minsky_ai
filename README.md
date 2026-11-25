@@ -101,7 +101,29 @@ Real numbers from `minsky eval` against this repo's own 24-case `evalset.toml` (
 
 ## Setup
 
-Fastest path is pasting `SETUP_PROMPT.md`'s content into your own Claude Code/Codex session to have it bootstrap everything automatically, OR doing it manually (install Ollama, pull `nomic-embed-text`, `pip install -e .`). We recommend using `gpt-oss:20b` or `qwen2.5-coder:14b` as the worker model; either requires at least 13 GB of free RAM, while `qwen2.5-coder:7b` is a lighter fallback for machines with less RAM. Configuration lives in `minsky.toml` - edit `[index] roots` / `extra_projects` to change what gets indexed, and `[git]` to toggle commit history indexing. The `roots` setting should point at your own code (e.g. `~/Projects` or `~/Developer`, not assuming either specifically).
+Minsky can't answer anything until it knows what to read and has turned that into vectors - the two steps below are the ones to not skim past.
+
+1. **Install prerequisites.** Python 3.11+, [Ollama](https://ollama.com) running locally, with `nomic-embed-text` pulled for embeddings. For `minsky delegate` and the agent-bootstrap path below, pull a worker model too - `gpt-oss:20b` or `qwen2.5-coder:14b` need at least 13 GB free RAM; `qwen2.5-coder:7b` is a lighter fallback.
+
+2. **Point Minsky at a workspace.** A fresh clone has no opinion about what to index. Edit `minsky.toml`'s `[index] roots` (and `extra_projects`) to point at your own code or docs - e.g. `~/Projects` or `~/Developer`, not assuming either specifically. `[git]` toggles whether commit history gets indexed too.
+
+3. **Vectorize it.** `pip install -e .`, then:
+
+   ```
+   .venv/bin/minsky index
+   ```
+
+   This is the step that matters: it chunks every file under your configured roots and embeds each chunk into LanceDB at `~/.minsky/db`. Nothing is searchable before this finishes, and there's no file watcher - re-run it by hand (or via cron) whenever the workspace changes.
+
+4. **Confirm it worked:**
+
+   ```
+   .venv/bin/minsky search "something you know is in your workspace"
+   ```
+
+   An empty result here almost always means step 2 or 3 was skipped, not that something is broken.
+
+Fastest path through all four: paste `SETUP_PROMPT.md`'s content into your own Claude Code/Codex session and let it bootstrap everything automatically, bounded by what `constraints/setup-contract.md` allows it to touch.
 
 ```mermaid
 flowchart TD
@@ -114,7 +136,7 @@ flowchart TD
     d1 --> e
     e --> f["Edit minsky.toml's<br/>roots / extra_projects"]
     f --> g["Create venv,<br/>pip install -e ."]
-    g --> h["Run minsky index"]
+    g --> h["Run minsky index<br/>(the vectorize step)"]
     h --> i["Suggest a first<br/>minsky search query"]
     i --> j(["Ready to search"])
 ```
